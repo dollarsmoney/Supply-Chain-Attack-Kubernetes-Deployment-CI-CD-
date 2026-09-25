@@ -1,0 +1,7 @@
+# ⚠️ INTENTIONALLY VULNERABLE — FOR EDUCATION — DO NOT DEPLOY. See ../../README.md
+apiVersion: v2
+name: vulnerable-shop
+description: Intentionally misconfigured chart for teaching K8s supply-chain security. DO NOT DEPLOY.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

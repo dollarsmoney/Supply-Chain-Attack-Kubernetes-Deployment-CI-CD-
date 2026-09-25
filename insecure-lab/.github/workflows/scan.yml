@@ -1,0 +1,115 @@
+# Part of insecure-lab (education). The DEFENSE: SAST + SCA + SBOM + DAST that flag the planted
+# weaknesses. Under insecure-lab/.github/ so it does NOT auto-run. See ../../README.md.
+name: Supply-Chain Scans (lab)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sast:
+    name: SAST (Semgrep + Gitleaks + IaC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Semgrep
+        continue-on-error: true
+        run: |
+          pip install semgrep
+          semgrep scan --config p/javascript --config p/nodejs --config p/expressjs \
+            --config p/secrets --sarif --output semgrep.sarif insecure-lab/app || true
+      - name: Gitleaks
+        continue-on-error: true
+        run: |
+          VERSION=8.24.0
+          curl -sSfL -o /tmp/gl.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          tar -xzf /tmp/gl.tar.gz -C /tmp gitleaks && sudo mv /tmp/gitleaks /usr/local/bin/
+          gitleaks detect --source insecure-lab --report-path gitleaks.json --exit-code 0
+      - name: Checkov (Helm)
+        continue-on-error: true
+        run: pip install checkov && checkov -d insecure-lab/helm --framework helm --compact || true
+      - name: Trivy config (IaC)
+        continue-on-error: true
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy config insecure-lab/ || true
+      - name: Upload SAST reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-reports
+          path: |
+            semgrep.sarif
+            gitleaks.json
+
+  sca:
+    name: SCA (npm audit + Trivy fs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22.x }
+      - name: npm audit
+        continue-on-error: true
+        working-directory: insecure-lab/app
+        run: npm install --package-lock-only --ignore-scripts && npm audit || true
+      - name: Trivy fs
+        continue-on-error: true
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy fs --scanners vuln insecure-lab/app || true
+
+  sbom:
+    name: SBOM (Syft) + scan (Grype)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate SBOM
+        continue-on-error: true
+        uses: anchore/sbom-action@v0
+        with:
+          path: insecure-lab/app
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          upload-artifact: false
+      - name: Scan SBOM
+        continue-on-error: true
+        uses: anchore/scan-action@v6
+        with:
+          sbom: sbom.cdx.json
+          fail-build: false
+          severity-cutoff: high
+          output-format: table
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
+
+  dast:
+    name: DAST (OWASP ZAP baseline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build lab image
+        run: docker build -t vuln-lab:ci -f insecure-lab/app/Dockerfile insecure-lab
+      - name: Start app
+        run: docker run -d --name lab --network host vuln-lab:ci
+      - name: Wait for health
+        run: for i in $(seq 1 20); do curl -fs http://localhost:3000/healthz && break; sleep 2; done
+      - name: ZAP baseline
+        continue-on-error: true
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://localhost:3000
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: zap-report
+      - name: Stop app
+        if: always()
+        run: docker rm -f lab || true

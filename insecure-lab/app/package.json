@@ -1,0 +1,17 @@
+{
+  "_comment": "⚠️ INTENTIONALLY VULNERABLE — EDUCATION ONLY. Fixes: ../docs/REMEDIATION.md",
+  "_VULN-07": "Unscoped internal-sounding name + no .npmrc scoping = dependency-confusion risk (illustrative)",
+  "name": "internal-shop-utils",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node src/server.js" },
+  "_VULN-08": "Dependencies pinned to known-vulnerable versions for SCA to flag",
+  "dependencies": {
+    "express": "4.16.0",
+    "lodash": "4.17.11",
+    "axios": "0.21.0",
+    "minimist": "1.2.0",
+    "jsonwebtoken": "8.3.0"
+  }
+}

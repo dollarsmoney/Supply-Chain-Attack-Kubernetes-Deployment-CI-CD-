@@ -1,0 +1,45 @@
+# ⚠️ INTENTIONALLY VULNERABLE — EDUCATION ONLY. Fixes: ../../../docs/REMEDIATION.md
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulnerable-shop
+  labels: { app: vulnerable-shop }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vulnerable-shop }
+  template:
+    metadata:
+      labels: { app: vulnerable-shop }
+    spec:
+      hostNetwork: true                          # VULN-20
+      hostPID: true                              # VULN-21
+      automountServiceAccountToken: true         # VULN-26
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 3000
+          env:                                   # VULN-22: plaintext secret envs
+            - name: DB_PASSWORD
+              value: "{{ .Values.plaintextSecrets.dbPassword }}"
+            - name: API_KEY
+              value: "{{ .Values.plaintextSecrets.apiKey }}"
+          securityContext:                       # VULN-23: privileged / root / privesc / caps
+            privileged: true
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false
+            capabilities:
+              add: ["SYS_ADMIN", "NET_ADMIN"]
+          # VULN-24: no resource requests/limits (omitted)
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+      volumes:
+        - name: host-root                        # VULN-25: hostPath mount of /
+          hostPath:
+            path: /
+            type: Directory

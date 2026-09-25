@@ -1,0 +1,8 @@
+# ⚠️ INTENTIONALLY VULNERABLE — EDUCATION ONLY. Fixes: ../../docs/REMEDIATION.md
+image:
+  repository: internal-shop/backend
+  tag: latest                    # VULN-18: floating tag
+  pullPolicy: Always
+plaintextSecrets:                # VULN-19: secrets in plaintext values
+  dbPassword: devpassword-EXAMPLE
+  apiKey: sk_live_EXAMPLE_PLACEHOLDER_do_not_use_0000000000
