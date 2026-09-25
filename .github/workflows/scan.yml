@@ -1,8 +1,13 @@
-# Part of the supply-chain lab. The DEFENSE: SAST + SCA + SBOM + DAST that flag the planted
-# weaknesses. Manual trigger (workflow_dispatch). See README.md.
-name: Supply-Chain Scans (lab)
+# The DEFENSE pipeline: SAST + SCA + SBOM + DAST that flag the planted weaknesses.
+# Runs on push and pull_request (and manual dispatch). All jobs are non-blocking so a
+# single run surfaces the full finding set; reports upload as artifacts. See README.md.
+name: Supply-Chain Scans
 
 on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:

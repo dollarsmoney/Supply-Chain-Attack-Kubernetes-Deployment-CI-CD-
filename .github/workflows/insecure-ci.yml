@@ -1,0 +1,33 @@
+# ⚠️ EDUCATION ONLY — this workflow deliberately shows INSECURE CI patterns. Fixes: ../../docs/REMEDIATION.md
+#
+# SAFETY: the truly exploitable parts have been removed so this is safe to keep in a live public repo:
+#   - trigger is workflow_dispatch (manual) — NOT pull_request_target, so no pwn-request (see VULN-02)
+#   - it checks out the repo's own commit, never an untrusted PR head
+# The remaining lines are documented anti-patterns kept as the lesson; see docs/VULNERABILITIES.md.
+name: Insecure CI (demo)
+
+on:
+  workflow_dispatch:            # safe manual trigger. VULN-02 would use pull_request_target — do NOT.
+
+permissions: write-all          # VULN-04: over-broad token scope (anti-pattern; inert without an exploit trigger)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4        # safe: checks out this repo's own code (github.sha)
+
+      # VULN-01 (anti-pattern): interpolating event data into a shell. On workflow_dispatch this is
+      # empty/safe; with pull_request_target + a PR title it would be script injection.
+      - run: echo "Building ref: ${{ github.event.pull_request.title }}"
+
+      # VULN-05 (anti-pattern): never echo secrets. Masked here; shown only to illustrate the mistake.
+      - run: echo "token would be exposed here (masked)"
+
+      # VULN-03 (anti-pattern): unpinned third-party action — pin to a full SHA instead.
+      # Left commented so the demo run stays green; uncomment to see it resolve a moving ref.
+      # - uses: some-org/some-action@main
+
+      # VULN-06 (anti-pattern): piping an unverified remote installer to bash — verify a checksum first.
+      # Left commented so nothing untrusted executes in a real run.
+      # - run: curl -sSL https://example.com/install.sh | bash
