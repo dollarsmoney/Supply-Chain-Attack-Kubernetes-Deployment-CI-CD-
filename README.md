@@ -12,37 +12,37 @@ finding and its remediation side by side.
 
 ## Contents
 
-Everything lives under [`insecure-lab/`](insecure-lab/):
-
 | Path | What it demonstrates |
 |------|----------------------|
-| [`app/`](insecure-lab/app) | Outdated CVE dependencies, dependency-confusion risk, root container, baked-in secret, command injection, XSS |
-| [`helm/vulnerable-shop/`](insecure-lab/helm/vulnerable-shop) | Privileged pod, `hostPath /`, plaintext secrets, no resource limits |
-| [`.github/workflows/insecure-ci.yml`](insecure-lab/.github/workflows/insecure-ci.yml) | Script injection, `pull_request_target`, unpinned actions, `write-all`, secret-in-logs, `curl \| bash` |
-| [`.github/workflows/scan.yml`](insecure-lab/.github/workflows/scan.yml) | The **defense**: SAST + SCA + SBOM + DAST that flag every weakness |
-| [`docs/VULNERABILITIES.md`](insecure-lab/docs/VULNERABILITIES.md) | Index of all 27 findings → file, CWE, detecting tool |
-| [`docs/REMEDIATION.md`](insecure-lab/docs/REMEDIATION.md) | The corrected pattern for each finding |
+| [`app/`](app) | Outdated CVE dependencies, dependency-confusion risk, root container, baked-in secret, command injection, XSS |
+| [`helm/vulnerable-shop/`](helm/vulnerable-shop) | Privileged pod, `hostPath /`, plaintext secrets, no resource limits |
+| [`.github/workflows/insecure-ci.yml`](.github/workflows/insecure-ci.yml) | Script injection, `pull_request_target`, unpinned actions, `write-all`, secret-in-logs, `curl \| bash` |
+| [`.github/workflows/scan.yml`](.github/workflows/scan.yml) | The **defense**: SAST + SCA + SBOM + DAST that flag every weakness |
+| [`docs/VULNERABILITIES.md`](docs/VULNERABILITIES.md) | Index of all 27 findings → file, CWE, detecting tool |
+| [`docs/REMEDIATION.md`](docs/REMEDIATION.md) | The corrected pattern for each finding |
 
 ## Quick start
 
 ```bash
 # SAST
-semgrep scan --config p/javascript --config p/secrets insecure-lab/app
-gitleaks detect --source insecure-lab
-checkov -d insecure-lab/helm --framework helm
-trivy config insecure-lab/
+semgrep scan --config p/javascript --config p/secrets app
+gitleaks detect --source .
+checkov -d helm --framework helm
+trivy config .
 
 # SCA
-cd insecure-lab/app && npm install --package-lock-only --ignore-scripts && npm audit
+cd app && npm install --package-lock-only --ignore-scripts && npm audit
 
 # SBOM
-syft insecure-lab/app -o cyclonedx-json=sbom.cdx.json && grype sbom:sbom.cdx.json
+syft app -o cyclonedx-json=sbom.cdx.json && grype sbom:sbom.cdx.json
 
-# DAST — build, run, then ZAP baseline (see insecure-lab/.github/workflows/scan.yml)
+# DAST — build, run, then ZAP baseline (see .github/workflows/scan.yml)
 ```
 
-> **Note:** the workflow files live under `insecure-lab/.github/workflows/` (not the repo root),
-> so GitHub Actions does **not** auto-run them. To demo the scanners, copy `scan.yml` to a
-> root `.github/workflows/` directory and trigger it manually.
+## A note on the workflows
 
-See [`insecure-lab/README.md`](insecure-lab/README.md) for full details.
+- **`scan.yml`** (the defense) runs only on **manual dispatch** (`workflow_dispatch`).
+- **`insecure-ci.yml`** (the vulnerable demo) is kept for study. Its genuinely dangerous
+  trigger — `pull_request_target` (VULN-02) — is **disabled** (commented out) and the workflow
+  is set to manual dispatch, so the weaknesses cannot be exploited against this live repo.
+  The vulnerable patterns remain visible as the lesson; see [`docs/VULNERABILITIES.md`](docs/VULNERABILITIES.md).

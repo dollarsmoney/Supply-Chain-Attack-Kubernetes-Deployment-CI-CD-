@@ -1,0 +1,33 @@
+# ⚠️ INTENTIONALLY VULNERABLE — EDUCATION ONLY. Details + fixes: docs/VULNERABILITIES.md, docs/REMEDIATION.md
+#
+# SAFETY: the original dangerous trigger for this demo is `pull_request_target` (VULN-02). On a public
+# repo that would let anyone exploit the weaknesses below via a PR, so it is DISABLED here and the
+# workflow is set to manual dispatch only. The vulnerable trigger is shown (commented) as the lesson.
+name: Insecure CI (demo — do not run in production)
+
+on:
+  workflow_dispatch:
+  # VULN-02: pwn-request — runs with repo secrets AND checks out untrusted PR code. Left disabled.
+  # pull_request_target:
+  #   branches: [ "main" ]
+
+permissions: write-all            # VULN-04: over-broad token scope
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4  # VULN-02: (with pull_request_target) would check out untrusted PR head
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: some-org/some-action@main   # VULN-03: unpinned third-party action
+
+      # VULN-01: untrusted PR title interpolated into the shell
+      - run: echo "Building PR: ${{ github.event.pull_request.title }}"
+
+      # VULN-05: secret echoed to the log
+      - run: echo "token is ${{ secrets.DEPLOY_TOKEN }}"
+
+      # VULN-06: unverified remote installer piped to bash
+      - run: curl -sSL https://example.com/install.sh | bash
