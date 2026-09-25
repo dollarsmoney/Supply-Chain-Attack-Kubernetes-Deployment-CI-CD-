@@ -16,8 +16,8 @@ finding and its remediation side by side.
 |------|----------------------|
 | [`app/`](app) | Outdated CVE dependencies, dependency-confusion risk, root container, baked-in secret, command injection, XSS |
 | [`helm/vulnerable-shop/`](helm/vulnerable-shop) | Privileged pod, `hostPath /`, plaintext secrets, no resource limits |
-| [`.github/workflows/insecure-ci.yml`](.github/workflows/insecure-ci.yml) | Script injection, `pull_request_target`, unpinned actions, `write-all`, secret-in-logs, `curl \| bash` |
-| [`.github/workflows/scan.yml`](.github/workflows/scan.yml) | The **defense**: SAST + SCA + SBOM + DAST that flag every weakness |
+| [`ci-cd/insecure-ci.yml`](ci-cd/insecure-ci.yml) | Script injection, `pull_request_target`, unpinned actions, `write-all`, secret-in-logs, `curl \| bash` |
+| [`ci-cd/scan.yml`](ci-cd/scan.yml) | The **defense**: SAST + SCA + SBOM + DAST that flag every weakness |
 | [`docs/VULNERABILITIES.md`](docs/VULNERABILITIES.md) | Index of all 27 findings → file, CWE, detecting tool |
 | [`docs/REMEDIATION.md`](docs/REMEDIATION.md) | The corrected pattern for each finding |
 
@@ -36,13 +36,16 @@ cd app && npm install --package-lock-only --ignore-scripts && npm audit
 # SBOM
 syft app -o cyclonedx-json=sbom.cdx.json && grype sbom:sbom.cdx.json
 
-# DAST — build, run, then ZAP baseline (see .github/workflows/scan.yml)
+# DAST — build, run, then ZAP baseline (see ci-cd/scan.yml)
 ```
 
 ## A note on the workflows
 
-- **`scan.yml`** (the defense) runs only on **manual dispatch** (`workflow_dispatch`).
-- **`insecure-ci.yml`** (the vulnerable demo) is kept for study. Its genuinely dangerous
-  trigger — `pull_request_target` (VULN-02) — is **disabled** (commented out) and the workflow
-  is set to manual dispatch, so the weaknesses cannot be exploited against this live repo.
-  The vulnerable patterns remain visible as the lesson; see [`docs/VULNERABILITIES.md`](docs/VULNERABILITIES.md).
+The CI/CD workflows live in [`ci-cd/`](ci-cd) — **not** under `.github/workflows/` — so GitHub
+Actions does **not** run them. They are here to be read and scanned as part of the lesson.
+
+- **`scan.yml`** — the defense (SAST + SCA + SBOM + DAST). To actually run it, copy it into a
+  `.github/workflows/` directory and trigger it manually (`workflow_dispatch`).
+- **`insecure-ci.yml`** — the vulnerable demo. Its `pull_request_target` trigger (VULN-02) makes it
+  live-exploitable **if** placed in `.github/workflows/` on a public repo, so it is intentionally
+  kept out of that path. Read it; don't activate it.
